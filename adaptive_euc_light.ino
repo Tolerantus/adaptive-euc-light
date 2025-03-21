@@ -2,7 +2,6 @@
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 #include <ESP32Servo.h>
-// #include <Servo.h>
 
 #include <GyverHub.h>
 #include <PairsFile.h>
@@ -12,7 +11,6 @@
 
 const char* ssid = "euc_adaptive_light";
 const char* password = "12345678";
-const float ratio = 60 / 18;
 
 #define ISR 16
 #define SERVO 5
@@ -36,14 +34,21 @@ struct Angles {
   float z;
 };
 
-long correction = 0;
-int target = 0;
+// long correction = 0;
+// int target = 0;
+// float ratio = 80 / 16;
+
 void build(gh::Builder& b) {
 
   {
     gh::Row r(b);
     // наклон
     b.Slider_("targetAngle", &data).label("Target angle").range(-20, 20, 1);
+  }
+  {
+    gh::Row r(b);
+    // наклон
+    b.Slider_("ratio", &data).label("Ratio").range(3, 7, 0.1);
   }
 }
 
@@ -58,8 +63,8 @@ void setup() {
 
   // put your setup code here, to run once:
   prepareMpu();
-  target = data["targetAngle"];
-  // target = 0;
+  // target = data["targetAngle"];
+  // ratio = data["ratio"];
 
 
   provideAPWifi();
@@ -104,9 +109,10 @@ void loop() {
   static uint32_t lastMeasure;
   if (lastMeasure - millis() > 500 && mpuFlag && mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
     lastMeasure = millis();
-    Angles angles = getAngles();
-    target = data["targetAngle"];
-    float angle = angles.y;
+    int target = data["targetAngle"];
+    float ratio = data["ratio"];
+    float angle = getAngles().y;
+    int correction = 0;
     // Serial.print(angle);
     // Serial.print(" ");
     if (angle > HALF_PI) {
@@ -131,7 +137,6 @@ void loop() {
     servo.write(correction);  // и отправляем на серво
   }
 }
-
 
 Angles getAngles() {
   Quaternion q;
